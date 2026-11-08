@@ -7,6 +7,11 @@
 :root {
   --accent-color: #0099ff;
   --accent-glow: rgba(0, 153, 255, 0.45);
+
+  /* Variables globales para alineación JS/CSS */
+  --radius: 680px;
+  --cube-size: 110px;
+  --cube-half: 55px;
 }
 
 body {
@@ -39,7 +44,7 @@ body {
   object-position: center !important;
 }
 
-/* Minimalist Flashlight Cursor (Desktop only) */
+/* Flashlight Cursor */
 .cursor-flashlight {
   position: fixed;
   top: 0;
@@ -61,7 +66,7 @@ body {
   }
 }
 
-/* Header HUD */
+/* HUD Header */
 .hud-header {
   position: fixed;
   top: 0;
@@ -139,13 +144,13 @@ body {
 
 .carousel-ring {
   position: absolute;
-  width: 260px;
-  height: 380px;
+  width: 250px;
+  height: 360px;
   transform-style: preserve-3d;
   transition: transform 0.1s linear;
 }
 
-/* 3D Cards */
+/* 3D Cards Buttons */
 .carousel-card {
   position: absolute;
   top: 0;
@@ -155,8 +160,19 @@ body {
   border-radius: 16px;
   cursor: pointer;
   background-color: transparent;
-  transition: transform 0.1s ease-out;
+  border: none;
+  outline: none;
+  padding: 0;
   transform-style: preserve-3d;
+  font-family: inherit;
+}
+
+.card-tilt-wrapper {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.1s ease-out;
 }
 
 .card-face {
@@ -181,6 +197,11 @@ body {
   box-shadow: 0 0 35px var(--accent-glow);
 }
 
+.carousel-card:focus-visible .card-front {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 4px;
+}
+
 .card-image-wrapper {
   position: relative;
   width: 100%;
@@ -196,7 +217,7 @@ body {
   pointer-events: none;
 }
 
-/* Card Back Face (9-Petal Reactive Flower) */
+/* Card Back Face */
 .card-back {
   background-color: #000000;
   border-color: var(--accent-color);
@@ -217,18 +238,19 @@ body {
   transition: stroke 0.3s ease, filter 0.3s ease;
 }
 
-/* Central Axis 3D Cube */
+/* Central Axis 3D Cube (Optimizado con hardware acceleration) */
 .axis-cube-3d {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 110px;
-  height: 110px;
-  margin-top: -55px;
-  margin-left: -55px;
+  width: var(--cube-size);
+  height: var(--cube-size);
+  margin-top: calc(-1 * var(--cube-half));
+  margin-left: calc(-1 * var(--cube-half));
   transform-style: preserve-3d;
   pointer-events: none;
   transform: translate3d(0, 0, 0);
+  will-change: transform;
 }
 
 .cube-inner-wrapper {
@@ -246,11 +268,10 @@ body {
 
 .cube-face {
   position: absolute;
-  width: 110px;
-  height: 110px;
+  width: var(--cube-size);
+  height: var(--cube-size);
   background: rgba(0, 0, 0, 0.85);
   border: 1.5px solid var(--accent-color);
-  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -258,12 +279,12 @@ body {
   transition: border-color 0.3s ease;
 }
 
-.cube-face-front  { transform: rotateY(  0deg) translateZ(55px); }
-.cube-face-back   { transform: rotateY(180deg) translateZ(55px); }
-.cube-face-right  { transform: rotateY( 90deg) translateZ(55px); }
-.cube-face-left   { transform: rotateY(-90deg) translateZ(55px); }
-.cube-face-top    { transform: rotateX( 90deg) translateZ(55px); }
-.cube-face-bottom { transform: rotateX(-90deg) translateZ(55px); }
+.cube-face-front  { transform: rotateY(  0deg) translateZ(var(--cube-half)); }
+.cube-face-back   { transform: rotateY(180deg) translateZ(var(--cube-half)); }
+.cube-face-right  { transform: rotateY( 90deg) translateZ(var(--cube-half)); }
+.cube-face-left   { transform: rotateY(-90deg) translateZ(var(--cube-half)); }
+.cube-face-top    { transform: rotateX( 90deg) translateZ(var(--cube-half)); }
+.cube-face-bottom { transform: rotateX(-90deg) translateZ(var(--cube-half)); }
 
 .cube-flower-svg {
   width: 60px;
@@ -274,7 +295,7 @@ body {
   filter: drop-shadow(0 0 8px var(--accent-color));
 }
 
-/* Bottom Progress Flower Indicator */
+/* Bottom Progress Tracker */
 .bottom-flower-tracker {
   position: fixed;
   bottom: 2rem;
@@ -316,7 +337,7 @@ body {
   transition: fill 0.3s ease;
 }
 
-/* Theme Color Selector */
+/* Color Picker Widget */
 .color-picker-widget {
   position: fixed;
   bottom: 1.5rem;
@@ -338,11 +359,17 @@ body {
   cursor: pointer;
   font-family: inherit;
   transition: color 0.2s ease, transform 0.2s ease;
+  outline: none;
 }
 
 .color-option:hover, .color-option.active {
   color: var(--accent-color);
   transform: translateX(-3px);
+}
+
+.color-option:focus-visible {
+  color: var(--accent-color);
+  text-decoration: underline;
 }
 
 .color-option::before {
@@ -354,7 +381,7 @@ body {
   opacity: 1;
 }
 
-/* Lightbox Modal */
+/* Lightbox Modal Button & Overlay */
 .lightbox-backdrop {
   position: fixed;
   inset: 0;
@@ -365,6 +392,9 @@ body {
   justify-content: center;
   align-items: center;
   padding: 1.5rem;
+  border: none;
+  width: 100vw;
+  height: 100vh;
   cursor: zoom-out;
   animation: flyToFront 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
@@ -385,8 +415,8 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   pointer-events: auto;
 }
 
@@ -422,9 +452,10 @@ body {
   transition: color 0.25s ease, transform 0.25s ease;
 }
 
-.lightbox-back-btn:hover {
+.lightbox-back-btn:hover, .lightbox-back-btn:focus-visible {
   color: var(--accent-color);
   transform: translateX(-4px);
+  outline: none;
 }
 
 .lightbox-back-btn .arrow-icon {
@@ -433,8 +464,14 @@ body {
   color: var(--accent-color);
 }
 
-/* Mobile Breakpoints */
+/* Mobile Responsive Breakpoints & Ratio Adjustments */
 @media (max-width: 768px) {
+  :root {
+    --radius: 460px;
+    --cube-size: 85px;
+    --cube-half: 42.5px;
+  }
+
   .hud-header {
     padding: 0.9rem 1.2rem;
   }
@@ -456,13 +493,14 @@ body {
   }
 
   .carousel-ring {
-    width: 280px;
-    height: 420px;
+    width: 270px;
+    height: 388px;
   }
 
+  /* Aspect Ratio preservado en Mobile (0.694) */
   .carousel-card {
     width: 270px;
-    height: 410px;
+    height: 388px;
   }
 
   .card-face {
@@ -473,25 +511,6 @@ body {
     width: 80px;
     height: 80px;
   }
-
-  .axis-cube-3d {
-    width: 85px;
-    height: 85px;
-    margin-top: -42.5px;
-    margin-left: -42.5px;
-  }
-
-  .cube-face {
-    width: 85px;
-    height: 85px;
-  }
-
-  .cube-face-front  { transform: rotateY(  0deg) translateZ(42.5px); }
-  .cube-face-back   { transform: rotateY(180deg) translateZ(42.5px); }
-  .cube-face-right  { transform: rotateY( 90deg) translateZ(42.5px); }
-  .cube-face-left   { transform: rotateY(-90deg) translateZ(42.5px); }
-  .cube-face-top    { transform: rotateX( 90deg) translateZ(42.5px); }
-  .cube-face-bottom { transform: rotateX(-90deg) translateZ(42.5px); }
 
   .cube-flower-svg {
     width: 45px;

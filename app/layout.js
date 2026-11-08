@@ -1,20 +1,14 @@
 import './globals.css';
-import { Cinzel } from 'next/font/google';
-
-const cinzel = Cinzel({ 
-  subsets: ['latin'],
-  variable: '--font-cinzel',
-});
 
 export const metadata = {
-  title: "TANGI'S CALMA | Portfolio",
-  description: 'Portfolio de ilustración tradicional',
+  title: "Tangi's Calma — Portfolio",
+  description: "3D Interactive Art Portfolio",
 };
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="es" className={cinzel.variable}>
-      <body className="bg-black text-white antialiased">{children}</body>
+    <html lang="es">
+      <body>{children}</body>
     </html>
   );
 }

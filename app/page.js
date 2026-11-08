@@ -35,16 +35,38 @@ export default function Home() {
   const touchStartXRef = useRef(0);
   const isTouchingRef = useRef(false);
 
+  // REFS para evitar re-suscripciones constantes en el useEffect
+  const selectedImageRef = useRef(null);
+  const radiusRef = useRef(680);
+  const frontIndexRef = useRef(0);
+
   const [activeColor, setActiveColor] = useState('BLUE');
   const [selectedImage, setSelectedImage] = useState(null);
   const [currentFrontIndex, setCurrentFrontIndex] = useState(0);
-  const [radius, setRadius] = useState(680);
 
   const angleStep = 360 / ARTWORKS.length;
 
+  // Sincronización de Refs con Estado
+  useEffect(() => {
+    selectedImageRef.current = selectedImage;
+  }, [selectedImage]);
+
+  useEffect(() => {
+    // Manejo de tecla Escape para accesibilidad
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && selectedImageRef.current) {
+        setSelectedImage(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Loop de Animación 3D Principal (Ejecución única)
   useEffect(() => {
     const handleResize = () => {
-      setRadius(window.innerWidth <= 768 ? 460 : 680);
+      const isMobile = window.innerWidth <= 768;
+      radiusRef.current = isMobile ? 460 : 680;
     };
 
     handleResize();
@@ -58,18 +80,18 @@ export default function Home() {
     };
 
     const handleWheel = (e) => {
-      if (selectedImage) return;
+      if (selectedImageRef.current) return;
       targetRotationRef.current -= e.deltaY * 0.04;
     };
 
     const handleTouchStart = (e) => {
-      if (selectedImage) return;
+      if (selectedImageRef.current) return;
       isTouchingRef.current = true;
       touchStartXRef.current = e.touches[0].clientX;
     };
 
     const handleTouchMove = (e) => {
-      if (!isTouchingRef.current || selectedImage) return;
+      if (!isTouchingRef.current || selectedImageRef.current) return;
       const currentX = e.touches[0].clientX;
       const deltaX = (touchStartXRef.current - currentX) * 0.35;
       targetRotationRef.current -= deltaX;
@@ -81,19 +103,27 @@ export default function Home() {
     };
 
     const updateRotationLoop = () => {
-      if (!isTouchingRef.current && !selectedImage) {
-        targetRotationRef.current -= 0.05;
+      // Pausa del loop si la pestaña está oculta o si la obra está abierta en modal
+      if (!document.hidden && !selectedImageRef.current) {
+        if (!isTouchingRef.current) {
+          targetRotationRef.current -= 0.05;
+        }
+
+        currentRotationRef.current += (targetRotationRef.current - currentRotationRef.current) * 0.08;
+
+        if (ringRef.current) {
+          ringRef.current.style.transform = `translateZ(-${radiusRef.current}px) rotateY(${currentRotationRef.current}deg)`;
+        }
+
+        const normalized = ((currentRotationRef.current % 360) + 360) % 360;
+        const frontIdx = Math.round((360 - normalized) / angleStep) % ARTWORKS.length;
+
+        // Bailout: Evita re-renders a 60fps si el índice de tarjeta al frente no cambió
+        if (frontIdx !== frontIndexRef.current) {
+          frontIndexRef.current = frontIdx;
+          setCurrentFrontIndex(frontIdx);
+        }
       }
-
-      currentRotationRef.current += (targetRotationRef.current - currentRotationRef.current) * 0.08;
-
-      if (ringRef.current) {
-        ringRef.current.style.transform = `translateZ(-${radius}px) rotateY(${currentRotationRef.current}deg)`;
-      }
-
-      const normalized = ((currentRotationRef.current % 360) + 360) % 360;
-      const frontIdx = Math.round((360 - normalized) / angleStep) % ARTWORKS.length;
-      setCurrentFrontIndex(frontIdx);
 
       animationFrameRef.current = requestAnimationFrame(updateRotationLoop);
     };
@@ -115,7 +145,7 @@ export default function Home() {
       window.removeEventListener('touchend', handleTouchEnd);
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     };
-  }, [selectedImage, angleStep, radius]);
+  }, [angleStep]);
 
   const handleColorChange = (colorObj) => {
     setActiveColor(colorObj.name);
@@ -123,23 +153,28 @@ export default function Home() {
     document.documentElement.style.setProperty('--accent-glow', colorObj.glow);
   };
 
+  // Tilt 3D optimizado sobre wrapper interno sin intervenir en React State
   const handleCardMouseMove = (e) => {
     if (window.innerWidth <= 768 || selectedImage) return;
-    const card = e.currentTarget;
-    const rect = card.getBoundingClientRect();
+    const tiltWrapper = e.currentTarget.querySelector('.card-tilt-wrapper');
+    if (!tiltWrapper) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left - rect.width / 2;
     const y = e.clientY - rect.top - rect.height / 2;
 
     const rotateYVal = (x / (rect.width / 2)) * -18;
     const rotateXVal = (y / (rect.height / 2)) * 18;
 
-    card.style.transform = `rotateY(${card.dataset.angle}deg) translateZ(${radius}px) rotateY(${rotateYVal}deg) rotateX(${rotateXVal}deg) scale(1.04)`;
+    tiltWrapper.style.transform = `rotateY(${rotateYVal}deg) rotateX(${rotateXVal}deg) scale(1.04)`;
   };
 
   const handleCardMouseLeave = (e) => {
     if (window.innerWidth <= 768 || selectedImage) return;
-    const card = e.currentTarget;
-    card.style.transform = `rotateY(${card.dataset.angle}deg) translateZ(${radius}px) rotateY(0deg) rotateX(0deg) scale(1)`;
+    const tiltWrapper = e.currentTarget.querySelector('.card-tilt-wrapper');
+    if (tiltWrapper) {
+      tiltWrapper.style.transform = `rotateY(0deg) rotateX(0deg) scale(1)`;
+    }
   };
 
   return (
@@ -153,6 +188,7 @@ export default function Home() {
           alt="TANGI'S CALMA Background"
           fill
           priority
+          sizes="100vw"
           className="hero-bg-image"
         />
       </div>
@@ -213,57 +249,59 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Double-Sided Artwork Cards */}
+          {/* Accessible 3D Cards Buttons */}
           {ARTWORKS.map((art, index) => {
             const cardAngle = index * angleStep;
             const isCenter = index === currentFrontIndex;
 
             return (
-              <div
+              <button
                 key={art.id}
-                data-angle={cardAngle}
+                type="button"
+                aria-label={`Ver ${art.title}`}
                 className={`carousel-card ${isCenter ? 'active-center' : ''}`}
                 style={{
-                  transform: `rotateY(${cardAngle}deg) translateZ(${radius}px)`,
+                  transform: `rotateY(${cardAngle}deg) translateZ(var(--radius))`,
                 }}
                 onMouseMove={handleCardMouseMove}
                 onMouseLeave={handleCardMouseLeave}
                 onClick={() => setSelectedImage(art)}
               >
-                {/* Front Face */}
-                <div className="card-face card-front">
-                  <div className="card-image-wrapper">
-                    <Image
-                      src={art.src}
-                      alt={art.title}
-                      fill
-                      className="card-image"
-                      sizes="(max-width: 768px) 270px, 300px"
-                      priority
-                    />
+                <div className="card-tilt-wrapper">
+                  {/* Front Face */}
+                  <div className="card-face card-front">
+                    <div className="card-image-wrapper">
+                      <Image
+                        src={art.src}
+                        alt={art.title}
+                        fill
+                        className="card-image"
+                        sizes="(max-width: 768px) 270px, 300px"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Back Face */}
+                  <div className="card-face card-back">
+                    <svg className="card-back-flower-svg" viewBox="0 0 100 100">
+                      {[...Array(PETALS_COUNT)].map((_, i) => {
+                        const angle = i * 40 * (Math.PI / 180);
+                        return (
+                          <line
+                            key={i}
+                            x1="50"
+                            y1="50"
+                            x2={50 + 38 * Math.sin(angle)}
+                            y2={50 - 38 * Math.cos(angle)}
+                            strokeWidth="2.5"
+                          />
+                        );
+                      })}
+                      <circle cx="50" cy="50" r="4.5" fill="var(--accent-color)" />
+                    </svg>
                   </div>
                 </div>
-
-                {/* Back Face */}
-                <div className="card-face card-back">
-                  <svg className="card-back-flower-svg" viewBox="0 0 100 100">
-                    {[...Array(PETALS_COUNT)].map((_, i) => {
-                      const angle = i * 40 * (Math.PI / 180);
-                      return (
-                        <line
-                          key={i}
-                          x1="50"
-                          y1="50"
-                          x2={50 + 38 * Math.sin(angle)}
-                          y2={50 - 38 * Math.cos(angle)}
-                          strokeWidth="2.5"
-                        />
-                      );
-                    })}
-                    <circle cx="50" cy="50" r="4.5" fill="var(--accent-color)" />
-                  </svg>
-                </div>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -294,6 +332,8 @@ export default function Home() {
         {THEME_COLORS.map((c) => (
           <button
             key={c.name}
+            type="button"
+            aria-pressed={activeColor === c.name}
             className={`color-option ${activeColor === c.name ? 'active' : ''}`}
             onClick={() => handleColorChange(c)}
           >
@@ -304,8 +344,20 @@ export default function Home() {
 
       {/* Lightbox Modal View */}
       {selectedImage && (
-        <div className="lightbox-backdrop" onClick={() => setSelectedImage(null)}>
-          <button className="lightbox-back-btn" onClick={() => setSelectedImage(null)}>
+        <button
+          type="button"
+          aria-label="Cerrar vista amplia"
+          className="lightbox-backdrop"
+          onClick={() => setSelectedImage(null)}
+        >
+          <button
+            type="button"
+            className="lightbox-back-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedImage(null);
+            }}
+          >
             <span className="arrow-icon">&lt;</span> BACK
           </button>
 
@@ -315,13 +367,12 @@ export default function Home() {
                 src={selectedImage.src}
                 alt={selectedImage.title}
                 fill
-                priority
                 className="lightbox-image-fit"
                 sizes="90vw"
               />
             </div>
           </div>
-        </div>
+        </button>
       )}
     </main>
   );
